@@ -19,7 +19,7 @@ class RSD435:
         self.cameraPosition = cameraPosition
         self.targetPosition = targetPosition
         self.update_view_and_projection()
-
+        
     def update_view_and_projection(self):
         """Update view and projection matrices based on current camera position and target position."""
         self.viewMatrix = p.computeViewMatrix(self.cameraPosition, self.targetPosition, [0, 0, 1])
