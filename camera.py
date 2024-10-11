@@ -10,6 +10,9 @@ from ball import Ball, Simulation
 
 class RSD435:
     def __init__(self, cameraPosition=[0, 0, 0], targetPosition=[1, 0, 0]):
+        self.projectionMatrixRGB = None
+        self.projectionMatrixDepth = None
+        self.viewMatrix = None
         self.nearPlane = 0.28
         self.farPlane = 3
         self.resolutionDepth = (640, 360)
@@ -31,9 +34,7 @@ class RSD435:
         )
 
     def getDepthImage(self):
-        """Capture and return the depth image from the camera."""
         try:
-            # 1. Use specific return values
             _, _, _, depth_img, _ = p.getCameraImage(
                 width=self.resolutionDepth[0],
                 height=self.resolutionDepth[1],
@@ -41,14 +42,9 @@ class RSD435:
                 projectionMatrix=self.projectionMatrixDepth,
                 flags=p.ER_NO_SEGMENTATION_MASK
             )
-
-            # 2. Reshape more efficiently
             depth_img = np.array(depth_img).reshape(self.resolutionDepth[1], self.resolutionDepth[0])
 
-            # 3. Use cv2.normalize for more efficient normalization
             depth_normalized = cv2.normalize(depth_img, None, 0, 255, cv2.NORM_MINMAX)
-
-            # 4. Convert to uint8 more efficiently
             return depth_normalized.astype(np.uint8)
 
         except Exception as e:
@@ -57,7 +53,6 @@ class RSD435:
 
 
     def getRGBImage(self):
-        """Capture and return the RGB image from the camera."""
         try:
             _, _, rgb_image, _, _ = p.getCameraImage(
                 self.resolutionRGB[0], self.resolutionRGB[1],
@@ -76,8 +71,7 @@ class RSD435:
         p.createMultiBody(baseMass=0, baseVisualShapeIndex=visual_shape_id, baseCollisionShapeIndex=collision_shape_id, basePosition=position)
 
 def run_simulation(camera):
-    """Function to run the simulation."""
-    p.setRealTimeSimulation(0)  # Disable real-time simulation
+    p.setRealTimeSimulation(0)
     step_counter = 0
 
     while p.isConnected():
@@ -88,14 +82,12 @@ def run_simulation(camera):
         time.sleep(1.0 / 240)  # Sleep for a fixed time step (240 Hz)
 
 def capture_images(camera):
-    """Function to capture images."""
     last_capture_time = time.time()
-    capture_interval = 0.05 # Minimum time interval between captures in seconds
+    capture_interval = 0.05
 
     while p.isConnected():
         current_time = time.time()
 
-        # Capture images based on time interval
         if current_time - last_capture_time >= capture_interval:
             depth_img = camera.getDepthImage()
             rgb_image = camera.getRGBImage()
