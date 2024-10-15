@@ -46,14 +46,14 @@ if __name__ == '__main__':  # <-- This is the key change
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'  # Checks if GPU is available
     # Create the SAC model
-    model = SAC("MlpPolicy", env, verbose=1, tensorboard_log="./sac_robot_tensorboard/")
+    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./sac_robot_tensorboard/")
 
     # Set your desired reward threshold
     reward_threshold = 100  # Adjust this to your preference
     reward_callback = RewardThresholdCallback(reward_threshold=reward_threshold)
 
     # Train the model
-    model.learn(total_timesteps=1000000000, callback=[eval_callback, reward_callback])
+    model.learn(total_timesteps=100000, callback=[eval_callback, reward_callback])
 
     # Save the model
     model.save("sac_robot")
