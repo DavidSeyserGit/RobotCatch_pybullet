@@ -10,12 +10,12 @@ class RobotEnv(gym.Env):
     def __init__(self):
         super(RobotEnv, self).__init__()
         # PyBullet setup
-        self.physicsClient = p.connect(p.DIRECT)
+        self.physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -9.81)
         # Load plane and robot
         p.loadURDF("plane.urdf")
-        self.robotId = p.loadURDF("models/abb_irb120_support/urdf/abbIrb120.urdf", [0, 0, 0], useFixedBase=1)
+        self.robotId = p.loadURDF("models/IRB1100_xistera/urdf/IRB1100_xistera.urdf", [0, 0, 0], useFixedBase=1)
         # Define action and observation space
         self.action_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32)
