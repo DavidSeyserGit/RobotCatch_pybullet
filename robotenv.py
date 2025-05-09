@@ -19,7 +19,7 @@ class RobotEnv(gym.Env):
         # Define action and observation space
         self.action_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32)
-        self.target_pos = [0.5, 0.5, 0.5]
+        self.target_pos = [0.5, 0.5, 0.5] #needs to be changed to be the balls position
         self.t = 0
         self.episode_reward = 0
         self.episode_rewards = []
