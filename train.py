@@ -35,7 +35,7 @@ def make_env():
 
 if __name__ == '__main__':  # <-- This is the key change
     # Number of parallel environments (robots)
-    num_envs = 30  # You can change this to the desired number of parallel robots
+    num_envs = 1  # You can change this to the desired number of parallel robots
 
     # Create the parallel environment
     env = SubprocVecEnv([make_env() for _ in range(num_envs)])

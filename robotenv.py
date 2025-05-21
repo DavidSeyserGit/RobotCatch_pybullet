@@ -10,7 +10,7 @@ class RobotEnv(gym.Env):
     def __init__(self):
         super(RobotEnv, self).__init__()
         # PyBullet setup
-        self.physicsClient = p.connect(p.DIRECT)
+        self.physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -9.81)
         # Load plane and robot
