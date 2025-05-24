@@ -35,7 +35,7 @@ def make_env():
 
 if __name__ == '__main__':  # <-- This is the key change
     # Number of parallel environments (robots)
-    num_envs = 1  # You can change this to the desired number of parallel robots
+    num_envs = 4  # You can change this to the desired number of parallel robots
 
     # Create the parallel environment
     env = SubprocVecEnv([make_env() for _ in range(num_envs)])
@@ -53,7 +53,7 @@ if __name__ == '__main__':  # <-- This is the key change
     reward_callback = RewardThresholdCallback(reward_threshold=reward_threshold)
 
     # Train the model
-    model.learn(total_timesteps=100000, callback=[eval_callback, reward_callback])
+    model.learn(total_timesteps=int(1e100), callback=[eval_callback, reward_callback])
 
     # Save the model
     model.save("sac_robot")
