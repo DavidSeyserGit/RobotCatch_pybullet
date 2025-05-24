@@ -15,7 +15,19 @@ class RobotEnv(gym.Env):
         p.setGravity(0, 0, -9.81)
         # Load plane and robot
         p.loadURDF("plane.urdf")
-        self.robotId = p.loadURDF("models/IRB1100_xistera/urdf/IRB1100_xistera.urdf", [0, 0, 0], useFixedBase=1)
+        self.robotId = p.loadURDF("models/IRB1100_xistera/urdf/IRB1100_xistera.urdf", [0, 0, 2], useFixedBase=1)
+        # Example of loading an STL mesh as a visual shape (not collision)
+        stl_visual_shape_id = p.createVisualShape(
+            shapeType=p.GEOM_MESH,
+            fileName="models/station.STL",
+            meshScale=[1, 1, 1]
+        )
+        # Create a multi-body with only a visual shape (no collision)
+        self.stl_body_id = p.createMultiBody(
+            baseMass=0,
+            baseVisualShapeIndex=stl_visual_shape_id,
+            basePosition=[1, 0, 0]  # Change position as needed
+        )
         # Define action and observation space
         self.action_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32)
