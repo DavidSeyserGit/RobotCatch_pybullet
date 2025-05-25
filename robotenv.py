@@ -23,7 +23,7 @@ class HERRobotEnv(gym.Env):
         # Load plane and robot
         p.loadURDF("plane.urdf")
         
-        # STL setup (same as before)
+        # STL setup
         stl_visual_shape_id = p.createVisualShape(
             shapeType=p.GEOM_MESH,
             fileName="models/station.STL",
@@ -86,7 +86,7 @@ class HERRobotEnv(gym.Env):
         self.ball = None
         self.ball_caught = False
         
-        # Add goal-related variables
+        # Goal-related variables
         self.desired_goal = None
         self.goal_tolerance = 0.15  # Distance threshold for success (15cm)
 
@@ -111,7 +111,6 @@ class HERRobotEnv(gym.Env):
         ball_pos, _ = p.getBasePositionAndOrientation(self.ball.id)
         self.desired_goal = np.array(ball_pos, dtype=np.float32)
 
-        # Return HER-compatible observation
         return self._get_observation(), {}
 
     def _spawn_new_ball(self):
@@ -164,16 +163,12 @@ class HERRobotEnv(gym.Env):
         # Add is_success to info for HER
         info = {
             "ball_caught": self.ball_caught,
-            "is_success": self._is_success(
-                observation['achieved_goal'], 
-                observation['desired_goal']
-            )
+            "is_success": self.ball_caught  # Success = ball caught
         }
         
         return observation, reward, done, False, info
 
     def _get_observation(self):
-        # Return Dict observation for HER
         # Get joint angles
         joint_states = p.getJointStates(self.robotId, range(6))
         joint_angles = np.array([state[0] for state in joint_states], dtype=np.float32)
@@ -186,7 +181,7 @@ class HERRobotEnv(gym.Env):
             ball_position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         
         # Get end-effector position (achieved goal)
-        end_effector_state = p.getLinkState(self.robotId, 5)  # Assuming link 5 is end-effector
+        end_effector_state = p.getLinkState(self.robotId, 5)
         achieved_goal = np.array(end_effector_state[0], dtype=np.float32)
         
         # Combine joint angles and ball position for observation
@@ -200,28 +195,31 @@ class HERRobotEnv(gym.Env):
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
-        FIXED: Vectorized goal-conditioned reward function for HER.
-        Handles both single goals and batches of goals.
+        Simple sparse reward for HER:
+        - 0.0 if ball is caught OR end-effector reaches goal
+        - -1.0 otherwise
         """
-        # Convert to numpy arrays
         achieved_goal = np.array(achieved_goal)
         desired_goal = np.array(desired_goal)
         
-        # Handle both single goals and batches
         if achieved_goal.ndim == 1:
             # Single goal case
+            
+            # Check for ball catch first (highest priority)
+            if self.ball is not None and self.ball.id is not None:
+                contacts_ball_robot = p.getContactPoints(self.ball.id, self.robotId)
+                if len(contacts_ball_robot) > 0:
+                    self.ball_caught = True
+                    return 0.0  # Success!
+            
+            # If no ball caught, check goal achievement
             distance = np.linalg.norm(achieved_goal - desired_goal)
-            return -1.0 if distance > self.goal_tolerance else 0.0
+            return 0.0 if distance <= self.goal_tolerance else -1.0
+        
         else:
-            # Batch case (multiple goals)
+            # Batch case (for HER experience replay)
             distances = np.linalg.norm(achieved_goal - desired_goal, axis=1)
-            rewards = np.where(distances > self.goal_tolerance, -1.0, 0.0)
-            return rewards
-
-    def _is_success(self, achieved_goal, desired_goal):
-        """Check if the goal has been achieved"""
-        distance = np.linalg.norm(achieved_goal - desired_goal)
-        return distance < self.goal_tolerance
+            return np.where(distances <= self.goal_tolerance, 0.0, -1.0)
 
     def _is_ball_out_of_bounds(self):
         """Check if ball has gone out of reasonable bounds"""
@@ -239,23 +237,6 @@ class HERRobotEnv(gym.Env):
 
     def close(self):
         p.disconnect()
-
-    # Keep your old reward function for reference, but it's not used in HER
-    def _calculate_reward(self):
-        """Original reward function (not used in HER)"""
-        reward = 0
-        contacts_ball_robot = p.getContactPoints(self.ball.id, self.robotId)
-        if len(contacts_ball_robot) > 0:
-            reward += 100
-            self.ball_caught = True
-
-        for body_id in range(p.getNumBodies()):
-            if body_id != self.robotId and body_id != self.ball.id:
-                contacts_robot_env = p.getContactPoints(self.robotId, body_id)
-                if len(contacts_robot_env) > 0:
-                    reward -= 100
-                    break
-        return reward
 
     def get_average_reward(self):
         if len(self.episode_rewards) == 0:

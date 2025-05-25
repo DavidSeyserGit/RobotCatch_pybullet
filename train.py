@@ -101,7 +101,7 @@ if __name__ == '__main__':
     print("Starting HER training...")
     # Train the model
     model.learn(
-        total_timesteps=int(1e6),  # HER typically needs more timesteps
+        total_timesteps=int(1e100),  # HER typically needs more timesteps
         callback=[eval_callback, success_callback],
         log_interval=10
     )

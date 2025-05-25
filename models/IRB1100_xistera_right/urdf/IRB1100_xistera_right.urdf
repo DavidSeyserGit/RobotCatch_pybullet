@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="IRB1100_xistera_right">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.105283491089362 -0.0747974936088496 0.0720560356221441"
+        rpy="0 0 0" />
+      <mass
+        value="9.57913203645447" />
+      <inertia
+        ixx="0.0304260038935618"
+        ixy="9.44083492294534E-06"
+        ixz="-0.000380191192485916"
+        iyy="0.0471873448280596"
+        iyz="7.14611049157652E-07"
+        izz="0.0403438211255412" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.780392156862745 0.8 0.788235294117647 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="l1">
+    <inertial>
+      <origin
+        xyz="0.00572305394703132 0.00265468563181887 0.07550875863073"
+        rpy="0 0 0" />
+      <mass
+        value="8.45286215129813" />
+      <inertia
+        ixx="0.0476022498616155"
+        ixy="0.0046357398431065"
+        ixz="0.000433989974690969"
+        iyy="0.0384660007274197"
+        iyz="-0.000174868381419662"
+        izz="0.0363031349606012" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.780392156862745 0.8 0.788235294117647 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j1"
+    type="revolute">
+    <origin
+      xyz="-0.078905 -0.074803 0.15815"
+      rpy="0 -0.017453 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="l1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.7453"
+      upper="3.1888"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="l2">
+    <inertial>
+      <origin
+        xyz="0.0330351324578218 -0.110024058313502 0.00211568322506046"
+        rpy="0 0 0" />
+      <mass
+        value="6.55953315002978" />
+      <inertia
+        ixx="0.0736114896732282"
+        ixy="0.0127315502901848"
+        ixz="0.00502097661391875"
+        iyy="0.0211742478294637"
+        iyz="0.0013074234187404"
+        izz="0.0716132422818738" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.780392156862745 0.796078431372549 0.788235294117647 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j2"
+    type="continuous">
+    <origin
+      xyz="0 0 0.1775"
+      rpy="-1.5708 -0.21645 2.9548" />
+    <parent
+      link="l1" />
+    <child
+      link="l2" />
+    <axis
+      xyz="0.53585 0.11783 -0.83605" />
+  </joint>
+  <link
+    name="l3">
+    <inertial>
+      <origin
+        xyz="0.00615223764918336 -0.00537758298118202 0.0496803044207493"
+        rpy="0 0 0" />
+      <mass
+        value="2.86220192591443" />
+      <inertia
+        ixx="0.00441738632103778"
+        ixy="0.000350530028062172"
+        ixz="1.90998630024514E-05"
+        iyy="0.00487160500741025"
+        iyz="-2.30478869705661E-05"
+        izz="0.0059901783669827" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j3"
+    type="continuous">
+    <origin
+      xyz="0.031007 -0.26893 0.039981"
+      rpy="-3.1416 -0.58075 0.21645" />
+    <parent
+      link="l2" />
+    <child
+      link="l3" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+  <link
+    name="l4">
+    <inertial>
+      <origin
+        xyz="0.00242926853281289 -0.000509824913846435 0.116310680318752"
+        rpy="0 0 0" />
+      <mass
+        value="3.89100991021781" />
+      <inertia
+        ixx="0.018613433861176"
+        ixy="-0.000155504657462431"
+        ixz="0.000145978743861964"
+        iyy="0.0175184111032994"
+        iyz="0.000158188476271021"
+        izz="0.00525764583572195" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j4"
+    type="revolute">
+    <origin
+      xyz="-0.062356 0.040055 0.0485"
+      rpy="2.8023 -1.5708 3.041" />
+    <parent
+      link="l3" />
+    <child
+      link="l4" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.4761"
+      upper="2.8071"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="l5">
+    <inertial>
+      <origin
+        xyz="-0.000543297924133823 0.0129323438733311 0.0136708003755951"
+        rpy="0 0 0" />
+      <mass
+        value="0.000330181881227886" />
+      <inertia
+        ixx="2.90532047410457E-07"
+        ixy="3.68743103233192E-09"
+        ixz="2.85505526602895E-10"
+        iyy="2.03474589194246E-07"
+        iyz="-6.75081324979404E-09"
+        izz="3.19916580648221E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l5.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l5.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j5"
+    type="revolute">
+    <origin
+      xyz="-0.0020854 -0.015149 0.2265"
+      rpy="1.5708 0.2882 3.0066" />
+    <parent
+      link="l4" />
+    <child
+      link="l5" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8881"
+      upper="1.3007"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="l6">
+    <inertial>
+      <origin
+        xyz="-0.017903 0.00035803 0.23098"
+        rpy="0 0 0" />
+      <mass
+        value="2.6332" />
+      <inertia
+        ixx="0.013315"
+        ixy="-8.8583E-05"
+        ixz="0.0021755"
+        iyy="0.0089519"
+        iyz="-4.5071E-05"
+        izz="0.010571" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l6.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0 0 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://IRB1100_xistera_right/meshes/l6.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j6"
+    type="continuous">
+    <origin
+      xyz="-0.0027076 0.063943 0.0155"
+      rpy="1.5708 -0.020207 -3.0993" />
+    <parent
+      link="l5" />
+    <child
+      link="l6" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8881"
+      upper="2.8881"
+      effort="0"
+      velocity="0" />
+  </joint>
+</robot>
