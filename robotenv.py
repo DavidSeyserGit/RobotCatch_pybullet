@@ -11,7 +11,7 @@ class HERRobotEnv(gym.Env):
     def __init__(self):
         super(HERRobotEnv, self).__init__()
         # PyBullet setup
-        self.physicsClient = p.connect(p.DIRECT)
+        self.physicsClient = p.connect(p.GUI)
         p.resetDebugVisualizerCamera(
             cameraDistance=2,
             cameraYaw=45,
@@ -44,7 +44,7 @@ class HERRobotEnv(gym.Env):
         )
 
         self.robotId = p.loadURDF(
-            "models/IRB1100_xistera/urdf/IRB1100_xistera.urdf",
+            "models/IRB1100_xistera_right/urdf/IRB1100_xistera_right.urdf",
             [0, 0, 0.8],
             useFixedBase=1,
         )
