@@ -11,7 +11,7 @@ class HERRobotEnv(gym.Env):
     def __init__(self):
         super(HERRobotEnv, self).__init__()
         # PyBullet setup
-        self.physicsClient = p.connect(p.GUI)
+        self.physicsClient = p.connect(p.DIRECT)
         p.resetDebugVisualizerCamera(
             cameraDistance=2,
             cameraYaw=45,
@@ -48,6 +48,12 @@ class HERRobotEnv(gym.Env):
             [0, 0, 0.8],
             useFixedBase=1,
         )
+        
+        ee_min, ee_max = self._measure_workspace()
+        # add a small margin
+        margin = np.array([0.05, 0.05, 0.05])
+        ee_low = ee_min - margin
+        ee_high = ee_max + margin
 
         # Define action space
         self.action_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float32)
@@ -67,14 +73,14 @@ class HERRobotEnv(gym.Env):
                 dtype=np.float32
             ),
             'achieved_goal': spaces.Box(
-                low=np.array([-3.0, -3.0, 0.0]),  # End-effector position bounds
-                high=np.array([3.0, 3.0, 3.0]),
-                shape=(3,),
-                dtype=np.float32
+            low=ee_low.astype(np.float32),
+            high=ee_high.astype(np.float32),
+            shape=(3,),
+            dtype=np.float32
             ),
             'desired_goal': spaces.Box(
-                low=np.array([-3.0, -3.0, 0.0]),  # Goal position bounds
-                high=np.array([3.0, 3.0, 3.0]),
+                low=ee_low.astype(np.float32),
+                high=ee_high.astype(np.float32),
                 shape=(3,),
                 dtype=np.float32
             )
@@ -107,7 +113,7 @@ class HERRobotEnv(gym.Env):
         
         self._spawn_new_ball()
 
-        # Set goal as ball's initial position (where we want to intercept)
+        # Initialize goal to ball's initial position
         ball_pos, _ = p.getBasePositionAndOrientation(self.ball.id)
         self.desired_goal = np.array(ball_pos, dtype=np.float32)
 
@@ -116,9 +122,9 @@ class HERRobotEnv(gym.Env):
     def _spawn_new_ball(self):
         """Spawn a new ball with random velocity"""
         z_velocity = random.uniform(1, 2)
-        y_velocity = random.uniform(-0.5, 0.5)
+        y_velocity = random.uniform(-1, 1)
         x_velocity = random.uniform(-8, -4)
-        self.ball = Ball((3, 0, 1), (x_velocity, y_velocity, z_velocity))
+        self.ball = Ball((2, 0, 2), (x_velocity, y_velocity, z_velocity))
         self.ball.spawn()
         self.ball.draw_velocity_vector()
 
@@ -134,7 +140,7 @@ class HERRobotEnv(gym.Env):
 
         p.stepSimulation()
 
-        # Get observation
+        # Get observation (this will update the goal to current ball position)
         observation = self._get_observation()
 
         # Use goal-conditioned reward
@@ -177,8 +183,12 @@ class HERRobotEnv(gym.Env):
         if self.ball is not None and self.ball.id is not None:
             ball_pos, _ = p.getBasePositionAndOrientation(self.ball.id)
             ball_position = np.array(ball_pos, dtype=np.float32)
+            
+            # UPDATE: Set goal to current ball position (dynamic tracking)
+            self.desired_goal = ball_position.copy()
         else:
             ball_position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+            # Keep previous goal if ball is gone
         
         # Get end-effector position (achieved goal)
         end_effector_state = p.getLinkState(self.robotId, 5)
@@ -193,11 +203,26 @@ class HERRobotEnv(gym.Env):
             'desired_goal': self.desired_goal.copy()
         }
 
+    def _measure_workspace(self, n_samples=2000):
+            """Randomly sample joint angles and record EE positions."""
+            positions = []
+            for _ in range(n_samples):
+                # random joints in [-pi,pi]
+                qs = np.random.uniform(-np.pi, np.pi, size=6)
+                for j in range(6):
+                    p.resetJointState(self.robotId, j, qs[j])
+                ee_pos = p.getLinkState(self.robotId, 5)[0]
+                positions.append(ee_pos)
+            pos = np.array(positions)
+            mins = pos.min(axis=0)
+            maxs = pos.max(axis=0)
+            return mins, maxs
+
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
-        Simple sparse reward for HER:
-        - 0.0 if ball is caught OR end-effector reaches goal
-        - -1.0 otherwise
+        SPARSE REWARD - Only success for ball catching:
+        - 0.0 if ball is caught (contact with robot)
+        - -1.0 otherwise (no reward for proximity)
         """
         achieved_goal = np.array(achieved_goal)
         desired_goal = np.array(desired_goal)
@@ -205,19 +230,21 @@ class HERRobotEnv(gym.Env):
         if achieved_goal.ndim == 1:
             # Single goal case
             
-            # Check for ball catch first (highest priority)
+            # Check for ball catch - ONLY source of positive reward
             if self.ball is not None and self.ball.id is not None:
-                contacts_ball_robot = p.getContactPoints(self.ball.id, self.robotId)
+                contacts_ball_robot = p.getContactPoints(self.ball.id, self.robotId, -1, 5)  # 5 is the end effector link index
                 if len(contacts_ball_robot) > 0:
                     self.ball_caught = True
-                    return 0.0  # Success!
+                    return 0.0  # Success! Ball caught
             
-            # If no ball caught, check goal achievement
-            distance = np.linalg.norm(achieved_goal - desired_goal)
-            return 0.0 if distance <= self.goal_tolerance else -1.0
+            # No ball caught = failure
+            return -1.0
         
         else:
             # Batch case (for HER experience replay)
+            # For HER, we still need to check goal achievement for relabeled goals
+            # But in practice, this will only be 0.0 when the relabeled goal 
+            # corresponds to a position where the ball was actually caught
             distances = np.linalg.norm(achieved_goal - desired_goal, axis=1)
             return np.where(distances <= self.goal_tolerance, 0.0, -1.0)
 
