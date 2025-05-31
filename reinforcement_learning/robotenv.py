@@ -5,6 +5,7 @@ import pybullet as p
 import pybullet_data
 from ball import Ball, Simulation
 import random
+import os
 
 
 class HERRobotEnv(gym.Env):
@@ -18,44 +19,77 @@ class HERRobotEnv(gym.Env):
             cameraPitch=-30,
             cameraTargetPosition=[1, 0.75, 1],
         )
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        # Add both pybullet_data and our models directory to the search path
+        pybullet_data_path = pybullet_data.getDataPath()
+        p.setAdditionalSearchPath(pybullet_data_path)
+        models_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
+        p.setAdditionalSearchPath(models_path)
         p.setGravity(0, 0, -9.81)
-        # Load plane and robot
-        p.loadURDF("plane.urdf")
         
-        # STL setup
-        stl_visual_shape_id = p.createVisualShape(
-            shapeType=p.GEOM_MESH,
-            fileName="models/station.STL",
-            meshScale=[0.001, 0.001, 0.001],
-        )
-        stl_collision_shape_id = p.createCollisionShape(
-            shapeType=p.GEOM_MESH,
-            fileName="models/station.STL",
-            meshScale=[0.001, 0.001, 0.001],
-        )
+        # Load plane and robot with absolute paths
+        plane_urdf = os.path.join(pybullet_data_path, "plane.urdf")
+        p.loadURDF(plane_urdf)
         
-        self.stl_body_id = p.createMultiBody(
-            baseMass=0,
-            baseVisualShapeIndex=stl_visual_shape_id,
-            baseCollisionShapeIndex=stl_collision_shape_id,
-            basePosition=[0.75, 0.75, 0],
-            baseOrientation=p.getQuaternionFromEuler([np.pi / 2, 0, -np.pi / 2]),
-        )
+        # STL setup - now using just the filename since we added the models path
+        try:
+            print(f"Attempting to load station STL from search paths...")
+            print(f"Current search paths:")
+            for path in [pybullet_data_path, models_path]:
+                print(f"- {path}")
+            
+            # First try with absolute path
+            stl_path = os.path.join(models_path, "station.STL")
+            print(f"Trying absolute path: {stl_path}")
+            
+            stl_visual_shape_id = p.createVisualShape(
+                shapeType=p.GEOM_MESH,
+                fileName=stl_path,
+                meshScale=[0.001, 0.001, 0.001],
+                rgbaColor=[0.7, 0.7, 0.7, 1],  # Light gray color
+            )
+            if stl_visual_shape_id < 0:
+                raise ValueError("Failed to create visual shape")
+                
+            stl_collision_shape_id = p.createCollisionShape(
+                shapeType=p.GEOM_MESH,
+                fileName=stl_path,
+                meshScale=[0.001, 0.001, 0.001],
+            )
+            if stl_collision_shape_id < 0:
+                raise ValueError("Failed to create collision shape")
+            
+            print("Successfully created visual and collision shapes")
+            
+            self.stl_body_id = p.createMultiBody(
+                baseMass=0,
+                baseVisualShapeIndex=stl_visual_shape_id,
+                baseCollisionShapeIndex=stl_collision_shape_id,
+                basePosition=[0.75, 0.75, 0],
+                baseOrientation=p.getQuaternionFromEuler([np.pi / 2, 0, -np.pi / 2]),
+            )
+            if self.stl_body_id < 0:
+                raise ValueError("Failed to create multibody")
+                
+            print(f"Successfully created station with body ID: {self.stl_body_id}")
+            
+        except Exception as e:
+            print(f"Error loading station STL: {str(e)}")
+            print("Continuing without station...")
+            self.stl_body_id = -1
 
+        # Load robot with absolute path
+        robot_urdf = os.path.join(models_path, "IRB1100_xistera_right/urdf/IRB1100_xistera_right.urdf")
         self.robotId = p.loadURDF(
-            "models/IRB1100_xistera_right/urdf/IRB1100_xistera_right.urdf",
+            robot_urdf,
             [0, 0, 0.8],
             useFixedBase=1,
         )
-        
-        ee_min, ee_max = self._measure_workspace()
-        # add a small margin
-        margin = np.array([0.05, 0.05, 0.05])
-        ee_low = ee_min - margin
-        ee_high = ee_max + margin
 
-        # Define action space
+        # Define static workspace bounds (in meters)
+        ee_low = np.array([-0.8, -0.8, 0.0])  # Minimum reach
+        ee_high = np.array([0.8, 0.8, 1.6])   # Maximum reach
+
+        # Define action space (6 joint angles)
         self.action_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float32)
         
         # Define HER-compatible observation space (Dict format)
@@ -73,10 +107,10 @@ class HERRobotEnv(gym.Env):
                 dtype=np.float32
             ),
             'achieved_goal': spaces.Box(
-            low=ee_low.astype(np.float32),
-            high=ee_high.astype(np.float32),
-            shape=(3,),
-            dtype=np.float32
+                low=ee_low.astype(np.float32),
+                high=ee_high.astype(np.float32),
+                shape=(3,),
+                dtype=np.float32
             ),
             'desired_goal': spaces.Box(
                 low=ee_low.astype(np.float32),
@@ -184,7 +218,6 @@ class HERRobotEnv(gym.Env):
             ball_pos, _ = p.getBasePositionAndOrientation(self.ball.id)
             ball_position = np.array(ball_pos, dtype=np.float32)
             
-            # UPDATE: Set goal to current ball position (dynamic tracking)
             self.desired_goal = ball_position.copy()
         else:
             ball_position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -202,21 +235,6 @@ class HERRobotEnv(gym.Env):
             'achieved_goal': achieved_goal,
             'desired_goal': self.desired_goal.copy()
         }
-
-    def _measure_workspace(self, n_samples=2000):
-            """Randomly sample joint angles and record EE positions."""
-            positions = []
-            for _ in range(n_samples):
-                # random joints in [-pi,pi]
-                qs = np.random.uniform(-np.pi, np.pi, size=6)
-                for j in range(6):
-                    p.resetJointState(self.robotId, j, qs[j])
-                ee_pos = p.getLinkState(self.robotId, 5)[0]
-                positions.append(ee_pos)
-            pos = np.array(positions)
-            mins = pos.min(axis=0)
-            maxs = pos.max(axis=0)
-            return mins, maxs
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
@@ -263,7 +281,12 @@ class HERRobotEnv(gym.Env):
         return False
 
     def close(self):
-        p.disconnect()
+        try:
+            if p.isConnected(physicsClientId=self.physicsClient):
+                p.disconnect(physicsClientId=self.physicsClient)
+        except Exception as e:
+            print(f"Warning during environment cleanup: {e}")
+            # Continue gracefully even if there's an error
 
     def get_average_reward(self):
         if len(self.episode_rewards) == 0:

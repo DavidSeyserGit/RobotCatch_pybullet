@@ -1,6 +1,6 @@
 import time
 import pybullet as p
-from stable_baselines3 import SAC
+from stable_baselines3 import SAC, PPO
 from stable_baselines3.common import utils
 from robotenv import HERRobotEnv
 
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         cameraTargetPosition=[1, 0.75, 1],
     )
 
-    model = SAC.load("her_sac_robot.zip", env=env)
+    model = SAC.load("reinforcement_learning/runs/metatrain/gen1_run4/her_sac_robot.zip", env=env)
     
     # Restore the original function (optional)
     utils.check_for_correct_spaces = original_check
