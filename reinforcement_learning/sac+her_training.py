@@ -87,19 +87,25 @@ if __name__ == "__main__":
             train_venv,
             replay_buffer_class=HerReplayBuffer,
             replay_buffer_kwargs=dict(
-                n_sampled_goal=8,
+                n_sampled_goal=4,    # Reduced from 8 to focus more on real experiences
                 goal_selection_strategy=GoalSelectionStrategy.FUTURE,
             ),
-            learning_rate=1e-5,
-            buffer_size=50000,
-            learning_starts=1000,
-            ent_coef=0.01,
-            batch_size=64,
-            tau=0.01,
-            gamma=0.99,
-            train_freq=1,
-            gradient_steps=1,
-            policy_kwargs=policy_kwargs,
+            learning_rate=3e-4,      # Increased from 1e-5 for faster learning
+            buffer_size=100000,      # Increased buffer size
+            learning_starts=1000,    # Reduced to start learning earlier in curriculum
+            ent_coef="auto",         # Automatic entropy tuning
+            batch_size=256,          # Larger batch size
+            tau=0.005,              # Slower target network update
+            gamma=0.98,             # Slightly reduced discount factor
+            train_freq=1,           # Update every step
+            gradient_steps=1,       # One gradient step per update
+            policy_kwargs=dict(
+                net_arch=dict(
+                    pi=[256, 256, 256],  # Deeper actor network
+                    qf=[256, 256, 256]   # Deeper critic network
+                ),
+                activation_fn=torch.nn.ReLU
+            ),
             verbose=1,
             tensorboard_log="./sac_ppo/",
             device=device,
@@ -112,7 +118,7 @@ if __name__ == "__main__":
 
         print("Starting HER + SAC training with normalized observations...")
         model.learn(
-            total_timesteps=2000,
+            total_timesteps=100000,  # Increased training time
             callback=eval_callback,
             log_interval=10,
         )

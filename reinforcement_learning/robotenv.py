@@ -11,6 +11,21 @@ import os
 class HERRobotEnv(gym.Env):
     def __init__(self):
         super(HERRobotEnv, self).__init__()
+        # Curriculum learning parameters
+        self.curriculum_phase = 0  # Starts at easiest phase
+        self.success_window = []  # Track recent successes
+        self.window_size = 100  # Number of episodes to consider
+        self.promotion_threshold = 0.2  # 20% success rate to increase difficulty
+        
+        # Phase descriptions for logging
+        self.phase_descriptions = [
+            "Phase 0: Close range (1.0-1.5m), Slow balls (-3 to -2 m/s)",
+            "Phase 1: Medium range (1.3-1.8m), Medium speed (-4 to -3 m/s)",
+            "Phase 2: Long range (1.5-2.0m), Fast balls (-6 to -4 m/s)",
+            "Phase 3: Full range (1.5-2.5m), Full speed (-8 to -4 m/s)"
+        ]
+        print(f"\nStarting curriculum learning at {self.phase_descriptions[0]}")
+        
         # PyBullet setup
         self.physicsClient = p.connect(p.DIRECT)
         p.resetDebugVisualizerCamera(
@@ -154,13 +169,61 @@ class HERRobotEnv(gym.Env):
         return self._get_observation(), {}
 
     def _spawn_new_ball(self):
-        """Spawn a new ball with random velocity"""
-        z_velocity = random.uniform(1, 2)
-        y_velocity = random.uniform(-1, 1)
-        x_velocity = random.uniform(-8, -4)
-        self.ball = Ball((2, 0, 2), (x_velocity, y_velocity, z_velocity))
+        """Spawn a new ball with random position and velocity based on curriculum phase"""
+        # Curriculum-based parameters
+        distance_ranges = [
+            (1.0, 1.5),   # Phase 0: Close range
+            (1.3, 1.8),   # Phase 1: Medium range
+            (1.5, 2.0),   # Phase 2: Longer range
+            (1.5, 2.5),   # Phase 3: Full range
+        ]
+        velocity_ranges = [
+            (-3, -2),     # Phase 0: Slow
+            (-4, -3),     # Phase 1: Medium
+            (-6, -4),     # Phase 2: Fast
+            (-8, -4),     # Phase 3: Full speed
+        ]
+        
+        # Get current ranges
+        phase = min(self.curriculum_phase, len(distance_ranges) - 1)
+        dist_range = distance_ranges[phase]
+        vel_range = velocity_ranges[phase]
+        
+        # Random position within current bounds
+        x_pos = random.uniform(*dist_range)  # Distance based on phase
+        y_pos = random.uniform(-0.3, 0.3)    # Reduced lateral variation
+        z_pos = random.uniform(1.6, 2.0)     # Slightly lower height range
+        
+        # Random initial velocities based on phase
+        x_velocity = random.uniform(*vel_range)
+        y_velocity = random.uniform(-0.5, 0.5)  # Reduced lateral velocity
+        z_velocity = random.uniform(0.5, 1.5)   # Reduced upward velocity
+        
+        self.ball = Ball((x_pos, y_pos, z_pos), (x_velocity, y_velocity, z_velocity))
         self.ball.spawn()
         self.ball.draw_velocity_vector()
+
+    def _update_curriculum(self, success):
+        """Update curriculum phase based on recent performance"""
+        self.success_window.append(float(success))
+        if len(self.success_window) > self.window_size:
+            self.success_window.pop(0)
+            
+        # Calculate success rate over window
+        if len(self.success_window) == self.window_size:
+            success_rate = np.mean(self.success_window)
+            
+            # Promote to next phase if doing well
+            if success_rate >= self.promotion_threshold and self.curriculum_phase < 3:
+                self.curriculum_phase += 1
+                print(f"\nCurriculum advanced! Success rate: {success_rate*100:.1f}%")
+                print(f"Now training at {self.phase_descriptions[self.curriculum_phase]}")
+                self.success_window = []  # Reset window after promotion
+            else:
+                # Periodically report progress in current phase
+                print(f"\nCurrent phase {self.curriculum_phase} progress:")
+                print(f"Success rate: {success_rate*100:.1f}% (need {self.promotion_threshold*100:.1f}% to advance)")
+                print(f"Remaining in {self.phase_descriptions[self.curriculum_phase]}")
 
     def step(self, action):
         # Scale actions
@@ -195,6 +258,9 @@ class HERRobotEnv(gym.Env):
         )
         
         if done:
+            # Update curriculum based on episode success
+            self._update_curriculum(self.ball_caught)
+            
             self.episode_rewards.append(self.episode_reward)
             if self.ball is not None and self.ball.id is not None:
                 self.ball.remove()
@@ -203,7 +269,8 @@ class HERRobotEnv(gym.Env):
         # Add is_success to info for HER
         info = {
             "ball_caught": self.ball_caught,
-            "is_success": self.ball_caught  # Success = ball caught
+            "is_success": self.ball_caught,  # Success = ball caught
+            "curriculum_phase": self.curriculum_phase  # Add phase to info
         }
         
         return observation, reward, done, False, info

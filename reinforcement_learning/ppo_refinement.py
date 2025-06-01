@@ -7,32 +7,42 @@ from stable_baselines3 import SAC, PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from robotenv import HERRobotEnv
+import torch
 
 def make_env():
     """Constructs one Monitor-wrapped RobotEnv."""
     def _init():
         env = HERRobotEnv()
+        # Start at the highest curriculum phase for PPO refinement
+        env.curriculum_phase = 3  # Lock at maximum difficulty
+        env.success_window = []   # Reset success window
         return Monitor(env)
     return _init
 
 def evaluate_model(model, env, n_episodes=3):
     """Evaluate a model for n episodes and return average reward."""
     rewards = []
+    successes = []
     for _ in range(n_episodes):
         obs = env.reset()  # VecEnv reset() returns just the obs
         done = False
         truncated = False
         total_reward = 0
+        episode_success = False
         while not (done or truncated):
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)  # VecEnv step() returns (obs, reward, done, info)
             total_reward += reward[0]  # Extract scalar reward from array
             done = done[0]  # Extract scalar done from array
             truncated = info[0].get('TimeLimit.truncated', False)  # Check for truncation in info
+            if info[0].get('is_success', False):
+                episode_success = True
         rewards.append(total_reward)
+        successes.append(float(episode_success))
     avg_reward = np.mean(rewards)
-    print(f"Average reward: {avg_reward:.2f}")
-    return avg_reward
+    success_rate = np.mean(successes) * 100
+    print(f"Average reward: {avg_reward:.2f}, Success rate: {success_rate:.1f}%")
+    return avg_reward, success_rate
 
 def main():
     parser = argparse.ArgumentParser()
@@ -64,11 +74,14 @@ def main():
         return
 
     # 3) extract its policy architecture and actor weights
-    # Only keep the network architecture from SAC's policy_kwargs
-    policy_kwargs = {
-        'net_arch': sac.policy_kwargs.get('net_arch', [128, 128]),
-        'activation_fn': sac.policy_kwargs.get('activation_fn', None)
-    }
+    # Match the deeper network architecture from SAC
+    policy_kwargs = dict(
+        net_arch=dict(
+            pi=[256, 256, 256],  # Match SAC's actor architecture
+            vf=[256, 256, 256]   # Value function gets same architecture
+        ),
+        activation_fn=torch.nn.ReLU
+    )
     actor_dict = sac.policy.state_dict()
 
     # 4) build a new PPO with MultiInputPolicy for dict observations
@@ -85,7 +98,7 @@ def main():
         clip_range=0.2,
         clip_range_vf=None,
         normalize_advantage=True,
-        ent_coef=0.0,
+        ent_coef=0.01,  # Slightly increased exploration
         vf_coef=0.5,
         max_grad_norm=0.5,
         use_sde=False,
@@ -96,16 +109,23 @@ def main():
     )
 
     # 5) copy over the SAC actor weights into PPO's policy network
-    # Only copy the actor part, not the critic
+    print("\nTransferring weights from SAC to PPO...")
+    transferred_params = 0
     for name, param in actor_dict.items():
         if 'actor' in name:  # Only copy actor parameters
             try:
-                ppo.policy.state_dict()[name].copy_(param)
-                print(f"Copied parameter: {name}")
-            except KeyError:
-                print(f"Skipping parameter: {name} (not found in PPO policy)")
+                # Extract the relevant part of the name for PPO
+                ppo_name = name.replace('actor.', '')
+                if ppo_name in ppo.policy.state_dict():
+                    ppo.policy.state_dict()[ppo_name].copy_(param)
+                    print(f"Transferred: {name} -> {ppo_name}")
+                    transferred_params += 1
+            except Exception as e:
+                print(f"Failed to transfer {name}: {str(e)}")
+    print(f"Successfully transferred {transferred_params} parameters")
 
     # 6) train for ~100 episodes = 100 * 500 steps ≈ 50 000 timesteps
+    print("\nStarting PPO training...")
     total_timesteps = 100 * 500
     ppo.learn(total_timesteps=total_timesteps)
 
@@ -114,7 +134,8 @@ def main():
 
     # 8) Final evaluation
     print("\nFinal PPO evaluation:")
-    evaluate_model(ppo, env, args.episodes)
+    final_reward, final_success_rate = evaluate_model(ppo, env, args.episodes)
+    print(f"Training complete! Final success rate: {final_success_rate:.1f}%")
 
     env.close()
 
