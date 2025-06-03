@@ -172,18 +172,17 @@ class HERRobotEnv(gym.Env):
         """Spawn a new ball with random position and velocity based on curriculum phase"""
         # Curriculum-based parameters for distance from robot
         distance_ranges = [
-            (1.0, 1.5),   # Phase 0: Close range
-            (1.3, 1.8),   # Phase 1: Medium range
-            (1.5, 2.0),   # Phase 2: Longer range
-            (1.5, 2.5),   # Phase 3: Full range
+            (2.0, 2.5),   # Phase 0: Close range
+            (2.3, 2.8),   # Phase 1: Medium range
+            (2.5, 3.0),   # Phase 2: Longer range
+            (2.5, 3.5),   # Phase 3: Full range
         ]
         velocity_ranges = [
-            (-3, -2),     # Phase 0: Slow
-            (-4, -3),     # Phase 1: Medium
-            (-6, -4),     # Phase 2: Fast
-            (-8, -4),     # Phase 3: Full speed
+            (-5, -4),     # Phase 0: Slow
+            (-7, -5),     # Phase 1: Medium
+            (-8, -6),     # Phase 2: Fast
+            (-10, -6),     # Phase 3: Full speed
         ]
-        
         # Get current ranges
         phase = min(self.curriculum_phase, len(distance_ranges) - 1)
         dist_range = distance_ranges[phase]
@@ -191,10 +190,10 @@ class HERRobotEnv(gym.Env):
         
         # Robot's position (center point for aiming)
         robot_pos = np.array([0.0, 0.0, 0.8])  # Robot base position
-        target_pos = np.array([0.0, 0.0, 1.2])  # Aim slightly above robot base
+        target_pos = np.array([0.0, 0.0, 2])  # Aim slightly above robot base
         
         # Random angle from which to throw the ball (restricted to face robot)
-        angle = random.uniform(-np.pi/4, np.pi/4)  # ±45 degrees
+        angle = random.uniform(-np.pi/7, np.pi/7)  # ±30 degrees
         
         # Calculate initial position based on angle and distance
         distance = random.uniform(*dist_range)
@@ -320,10 +319,27 @@ class HERRobotEnv(gym.Env):
             'desired_goal': self.desired_goal.copy()
         }
 
+    def _check_collisions(self):
+        """Check for robot self-collisions and station collisions"""
+        # Check self collisions between robot links
+        for link1 in range(p.getNumJoints(self.robotId)):
+            for link2 in range(link1 + 2, p.getNumJoints(self.robotId)):  # Skip adjacent links
+                if p.getContactPoints(self.robotId, self.robotId, link1, link2):
+                    return True, "self"
+                    
+        # Check station collisions if station exists
+        if self.stl_body_id >= 0:
+            for link_id in range(p.getNumJoints(self.robotId)):
+                if p.getContactPoints(self.robotId, self.stl_body_id, link_id):
+                    return True, "station"
+        
+        return False, None
+
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
-        SPARSE REWARD - Only success for ball catching:
+        SPARSE REWARD:
         - 0.0 if ball is caught (contact with robot)
+        - -1.0 if collision with station or self
         - -1.0 otherwise (no reward for proximity)
         """
         achieved_goal = np.array(achieved_goal)
@@ -331,6 +347,11 @@ class HERRobotEnv(gym.Env):
         
         if achieved_goal.ndim == 1:
             # Single goal case
+            
+            # First check for collisions
+            has_collision, _ = self._check_collisions()
+            if has_collision:
+                return -1.0  # Collision penalty
             
             # Check for ball catch - ONLY source of positive reward
             if self.ball is not None and self.ball.id is not None:
@@ -358,8 +379,8 @@ class HERRobotEnv(gym.Env):
         ball_pos, _ = p.getBasePositionAndOrientation(self.ball.id)
         if (
             ball_pos[2] < -1
-            or abs(ball_pos[0]) > 10
-            or abs(ball_pos[1]) > 10
+            or abs(ball_pos[0]) > 3
+            or abs(ball_pos[1]) > 3
         ):
             return True
         return False
