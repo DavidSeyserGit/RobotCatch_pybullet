@@ -170,7 +170,7 @@ class HERRobotEnv(gym.Env):
 
     def _spawn_new_ball(self):
         """Spawn a new ball with random position and velocity based on curriculum phase"""
-        # Curriculum-based parameters
+        # Curriculum-based parameters for distance from robot
         distance_ranges = [
             (1.0, 1.5),   # Phase 0: Close range
             (1.3, 1.8),   # Phase 1: Medium range
@@ -189,15 +189,32 @@ class HERRobotEnv(gym.Env):
         dist_range = distance_ranges[phase]
         vel_range = velocity_ranges[phase]
         
-        # Random position within current bounds
-        x_pos = random.uniform(*dist_range)  # Distance based on phase
-        y_pos = random.uniform(-0.3, 0.3)    # Reduced lateral variation
-        z_pos = random.uniform(1.6, 2.0)     # Slightly lower height range
+        # Robot's position (center point for aiming)
+        robot_pos = np.array([0.0, 0.0, 0.8])  # Robot base position
+        target_pos = np.array([0.0, 0.0, 1.2])  # Aim slightly above robot base
         
-        # Random initial velocities based on phase
-        x_velocity = random.uniform(*vel_range)
-        y_velocity = random.uniform(-0.5, 0.5)  # Reduced lateral velocity
-        z_velocity = random.uniform(0.5, 1.5)   # Reduced upward velocity
+        # Random angle from which to throw the ball (restricted to face robot)
+        angle = random.uniform(-np.pi/4, np.pi/4)  # ±45 degrees
+        
+        # Calculate initial position based on angle and distance
+        distance = random.uniform(*dist_range)
+        x_pos = distance * np.cos(angle)
+        y_pos = distance * np.sin(angle)
+        z_pos = random.uniform(1.6, 2.0)     # Height range
+        
+        # Calculate velocity vector that aims towards the target position
+        start_pos = np.array([x_pos, y_pos, z_pos])
+        direction = target_pos - start_pos
+        direction = direction / np.linalg.norm(direction)  # Normalize
+        
+        # Base velocity magnitude
+        velocity_magnitude = abs(random.uniform(*vel_range))
+        
+        # Add some randomness to velocity while maintaining general direction
+        velocity_variation = 0.2  # 20% variation
+        x_velocity = velocity_magnitude * direction[0] * (1 + random.uniform(-velocity_variation, velocity_variation))
+        y_velocity = velocity_magnitude * direction[1] * (1 + random.uniform(-velocity_variation, velocity_variation))
+        z_velocity = random.uniform(0.5, 1.5)  # Upward velocity component
         
         self.ball = Ball((x_pos, y_pos, z_pos), (x_velocity, y_velocity, z_velocity))
         self.ball.spawn()
