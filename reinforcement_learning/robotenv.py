@@ -319,58 +319,6 @@ class HERRobotEnv(gym.Env):
             'desired_goal': self.desired_goal.copy()
         }
 
-    def _check_collisions(self):
-        """Check for robot self-collisions and station collisions"""
-        # Check self collisions between robot links
-        for link1 in range(p.getNumJoints(self.robotId)):
-            for link2 in range(link1 + 2, p.getNumJoints(self.robotId)):  # Skip adjacent links
-                if p.getContactPoints(self.robotId, self.robotId, link1, link2):
-                    return True, "self"
-                    
-        # Check station collisions if station exists
-        if self.stl_body_id >= 0:
-            for link_id in range(p.getNumJoints(self.robotId)):
-                if p.getContactPoints(self.robotId, self.stl_body_id, link_id):
-                    return True, "station"
-        
-        return False, None
-
-    def compute_reward(self, achieved_goal, desired_goal, info):
-        """
-        SPARSE REWARD:
-        - 0.0 if ball is caught (contact with robot)
-        - -1.0 if collision with station or self
-        - -1.0 otherwise (no reward for proximity)
-        """
-        achieved_goal = np.array(achieved_goal)
-        desired_goal = np.array(desired_goal)
-        
-        if achieved_goal.ndim == 1:
-            # Single goal case
-            
-            # First check for collisions
-            has_collision, _ = self._check_collisions()
-            if has_collision:
-                return -1.0  # Collision penalty
-            
-            # Check for ball catch - ONLY source of positive reward
-            if self.ball is not None and self.ball.id is not None:
-                contacts_ball_robot = p.getContactPoints(self.ball.id, self.robotId, -1, 5)  # 5 is the end effector link index
-                if len(contacts_ball_robot) > 0:
-                    self.ball_caught = True
-                    return 0.0  # Success! Ball caught
-            
-            # No ball caught = failure
-            return -1.0
-        
-        else:
-            # Batch case (for HER experience replay)
-            # For HER, we still need to check goal achievement for relabeled goals
-            # But in practice, this will only be 0.0 when the relabeled goal 
-            # corresponds to a position where the ball was actually caught
-            distances = np.linalg.norm(achieved_goal - desired_goal, axis=1)
-            return np.where(distances <= self.goal_tolerance, 0.0, -1.0)
-
     def _is_ball_out_of_bounds(self):
         """Check if ball has gone out of reasonable bounds"""
         if self.ball is None or self.ball.id is None:
