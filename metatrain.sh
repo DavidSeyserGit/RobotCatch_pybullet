@@ -7,7 +7,7 @@ POPULATION=5
 WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRAIN_SCRIPT="${WORKSPACE_DIR}/reinforcement_learning/sac+her_training.py"
 REFINEMENT_SCRIPT="${WORKSPACE_DIR}/reinforcement_learning/ppo_refinement.py"
-OUTPUT_DIR="${WORKSPACE_DIR}/reinforcement_learning/runs/metatrain3_better_throw"
+OUTPUT_DIR="${WORKSPACE_DIR}/reinforcement_learning/runs/metatrain4_better_throw"
 
 echo "Starting meta-training with $GENERATIONS generations, $POPULATION parallel runs each"
 mkdir -p "$OUTPUT_DIR"
